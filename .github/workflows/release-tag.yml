@@ -1,0 +1,80 @@
+name: Release tag
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create release and packages
+    if: "startsWith(github.event.head_commit.message, 'chore: release')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config clang libclang-dev libpipewire-0.3-dev libasound2-dev libudev-dev libvulkan-dev libxkbcommon-dev libx11-dev libxcb1-dev libxcursor-dev libxrandr-dev libxi-dev libxext-dev libxinerama-dev libxxf86vm-dev libwayland-dev dpkg-dev liblzma-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install packaging tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deb,cargo-generate-rpm
+
+      - name: Build release binary
+        run: |
+          cargo build --release
+          strip -s target/release/midi-does
+
+      - name: Build Debian package
+        run: cargo deb --no-build
+
+      - name: Build RPM package
+        run: cargo generate-rpm
+
+      - name: Get version
+        id: version
+        run: |
+          cargo metadata --format-version 1 --no-deps > meta.json
+          VERSION=$(jq -r '.packages[] | select(.name == "midi-does") | .version' meta.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Package Nix recipe
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          tar -czf "midi-does-${VERSION}-nix.tar.gz" flake.nix flake.lock
+
+      - name: Create tag
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+
+      - name: Generate release notes
+        run: |
+          awk '/^## \[/{count++} count==1' CHANGELOG.md > release-notes.md
+          echo "--- Release notes ---"
+          cat release-notes.md
+
+      - name: Create release and upload artifacts
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body_path: release-notes.md
+          files: |
+            target/release/midi-does
+            target/debian/*.deb
+            target/generate-rpm/*.rpm
+            midi-does-*-nix.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

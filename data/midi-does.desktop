@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=midi-does
+Comment=Map MIDI controllers to PipeWire audio controls
+Exec=midi-does
+Icon=midi-does
+Terminal=false
+Categories=Audio;AudioVideo;Utility;
+Keywords=MIDI;PipeWire;Audio;Controller;
+StartupNotify=false

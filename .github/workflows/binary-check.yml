@@ -1,0 +1,168 @@
+name: Binary check
+
+on:
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check:
+    name: Size and compile time
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config clang libclang-dev libpipewire-0.3-dev libasound2-dev libudev-dev libvulkan-dev libxkbcommon-dev libx11-dev libxcb1-dev libxcursor-dev libxrandr-dev libxi-dev libxext-dev libxinerama-dev libxxf86vm-dev libwayland-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Restore baseline
+        id: cache-baseline
+        uses: actions/cache/restore@v5
+        with:
+          path: baseline.json
+          key: binary-baseline-${{ github.run_id }}
+          restore-keys: binary-baseline-
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-bloat
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-bloat
+
+      - name: Build and measure compile time
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          /usr/bin/time -f '%e' -o compile-time.txt cargo bloat --release --crates -n 20 > bloat-output.txt
+          echo "Compile time (real seconds): $(cat compile-time.txt)"
+
+          find target/release -maxdepth 1 -type f -executable \
+            -exec stat --format='%n %s' {} \; \
+            | sort \
+            | jq -R 'split(" ") | {(.[0] | split("/")[-1]): (.[1] | tonumber)}' \
+            | jq -s add > sizes.json
+
+          jq -n \
+            --argjson binaries "$(cat sizes.json)" \
+            --arg time "$(cat compile-time.txt)" \
+            '{ binaries: $binaries, compile_time_real: ($time | tonumber) }' \
+            > pr-sizes.json
+
+          echo "PR sizes:"
+          cat pr-sizes.json
+
+      - name: Analyze and generate report
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SIZE_THRESHOLD=10
+          TIME_THRESHOLD=20
+          PR_TIME=$(cat compile-time.txt)
+          CACHE_HIT="${{ steps.cache-baseline.outputs.cache-hit }}"
+          SIZE_FAIL=0
+          TIME_FAIL=0
+          REPORT="report.md"
+
+          both()    { echo "$@"; echo "$@" >> "$REPORT"; }
+          report()  { echo "$@" >> "$REPORT"; }
+          annotate(){ echo "$@"; }
+
+          : > "$REPORT"
+
+          report "## Binary Check"
+          report ""
+
+          both "### Compile Time"
+          report ""
+          if [ "$CACHE_HIT" = "true" ]; then
+            BASE_TIME=$(jq -r '.compile_time_real // 0' baseline.json)
+            if [ "$BASE_TIME" != "0" ] && [ -n "$BASE_TIME" ]; then
+              DELTA=$(echo "scale=1; ($PR_TIME - $BASE_TIME) * 100 / $BASE_TIME" | bc)
+              report "| Metric | Baseline | PR | Change |"
+              report "|--------|----------|----|--------|"
+              report "| Wall clock | ${BASE_TIME}s | ${PR_TIME}s | ${DELTA}% |"
+
+              if [ "$(echo "$DELTA > $TIME_THRESHOLD" | bc)" = "1" ]; then
+                annotate "::error::Compile time grew by ${DELTA}% (${BASE_TIME}s → ${PR_TIME}s). Threshold is ${TIME_THRESHOLD}%."
+                TIME_FAIL=1
+              elif [ "$(echo "$DELTA > 0" | bc)" = "1" ]; then
+                annotate "::notice::Compile time grew by ${DELTA}% (${BASE_TIME}s → ${PR_TIME}s). Within threshold."
+              else
+                annotate "::notice::Compile time decreased by ${DELTA#-}% (${BASE_TIME}s → ${PR_TIME}s)."
+              fi
+            else
+              report "| Metric | PR |"
+              report "|--------|----|"
+              report "| Wall clock | ${PR_TIME}s |"
+            fi
+          else
+            report "| Metric | PR |"
+            report "|--------|----|"
+            report "| Wall clock | ${PR_TIME}s |"
+            annotate "::warning::No baseline available for comparison."
+          fi
+          report ""
+
+          both "### Binary Sizes"
+          report ""
+          if [ "$CACHE_HIT" = "true" ]; then
+            report "| Binary | Baseline | PR | Change |"
+            report "|--------|----------|----|--------|"
+            for bin in $(jq -r '.binaries | keys[]' pr-sizes.json); do
+              PR_SIZE=$(jq -r ".binaries[\"$bin\"]" pr-sizes.json)
+              BASE_SIZE=$(jq -r ".binaries[\"$bin\"] // 0" baseline.json)
+              PR_HUMAN=$(numfmt --to=iec "$PR_SIZE" 2>/dev/null || echo "${PR_SIZE}B")
+              if [ "$BASE_SIZE" != "0" ] && [ -n "$BASE_SIZE" ]; then
+                BASE_HUMAN=$(numfmt --to=iec "$BASE_SIZE" 2>/dev/null || echo "${BASE_SIZE}B")
+                DIFF=$(( PR_SIZE - BASE_SIZE ))
+                DELTA=$(echo "scale=1; $DIFF * 100 / $BASE_SIZE" | bc)
+                report "| \`$bin\` | $BASE_HUMAN | $PR_HUMAN | ${DELTA}% |"
+
+                if [ "$DIFF" -gt 0 ] && [ "$(echo "$DELTA > $SIZE_THRESHOLD" | bc)" = "1" ]; then
+                  annotate "::error::$bin grew by ${DELTA}% ($BASE_HUMAN → $PR_HUMAN). Threshold is ${SIZE_THRESHOLD}%."
+                  SIZE_FAIL=1
+                elif [ "$DIFF" -gt 0 ]; then
+                  annotate "::notice::$bin grew by ${DELTA}% ($BASE_HUMAN → $PR_HUMAN). Within threshold."
+                elif [ "$DIFF" -lt 0 ]; then
+                  annotate "::notice::$bin shrank by ${DELTA#-}% ($BASE_HUMAN → $PR_HUMAN)."
+                else
+                  annotate "::notice::$bin unchanged ($PR_HUMAN)."
+                fi
+              else
+                report "| \`$bin\` | N/A | $PR_HUMAN | new |"
+                annotate "::warning::New binary '$bin' detected (no baseline). Size: $PR_HUMAN"
+              fi
+            done
+          else
+            report "| Binary | Size |"
+            report "|--------|------|"
+            for bin in $(jq -r '.binaries | keys[]' pr-sizes.json); do
+              PR_SIZE=$(jq -r ".binaries[\"$bin\"]" pr-sizes.json)
+              PR_HUMAN=$(numfmt --to=iec "$PR_SIZE" 2>/dev/null || echo "${PR_SIZE}B")
+              report "| \`$bin\` | $PR_HUMAN |"
+            done
+          fi
+          report ""
+
+          both "### cargo bloat (largest crates)"
+          report '```'
+          cat bloat-output.txt >> "$REPORT"
+          report '```'
+
+          if [ "$SIZE_FAIL" = "1" ] || [ "$TIME_FAIL" = "1" ]; then
+            exit 1
+          fi
+
+      - name: Print report
+        if: always()
+        run: cat report.md

@@ -1,0 +1,594 @@
+device_order = ["X-TOUCH MINI:X-TOUCH MINI MIDI 1"]
+
+[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1"]
+port_name = "X-TOUCH MINI:X-TOUCH MINI MIDI 1"
+grid_columns = 10
+grid_rows = 3
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "fdr1"
+type = "fader"
+col = 8
+row = 0
+col_span = 1
+row_span = 3
+outputs = []
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "fader"
+kind = "pitch_bend"
+channel = 8
+number = 0
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttnA"
+type = "button"
+col = 9
+row = 1
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 84
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 84
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttnB"
+type = "button"
+col = 9
+row = 2
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 85
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 85
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "enc1"
+type = "encoder"
+col = 0
+row = 0
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "rotate"
+kind = "cc"
+channel = 0
+number = 16
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 32
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "ring"
+kind = "led_ring_cc"
+channel = 0
+number = 48
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "enc2"
+type = "encoder"
+col = 1
+row = 0
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "rotate"
+kind = "cc"
+channel = 0
+number = 17
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 33
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "ring"
+kind = "led_ring_cc"
+channel = 0
+number = 49
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "enc3"
+type = "encoder"
+col = 2
+row = 0
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "rotate"
+kind = "cc"
+channel = 0
+number = 18
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 34
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "ring"
+kind = "led_ring_cc"
+channel = 0
+number = 50
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "enc4"
+type = "encoder"
+col = 3
+row = 0
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "rotate"
+kind = "cc"
+channel = 0
+number = 19
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 35
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "ring"
+kind = "led_ring_cc"
+channel = 0
+number = 51
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "enc5"
+type = "encoder"
+col = 4
+row = 0
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "rotate"
+kind = "cc"
+channel = 0
+number = 20
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 36
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "ring"
+kind = "led_ring_cc"
+channel = 0
+number = 52
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "enc6"
+type = "encoder"
+col = 5
+row = 0
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "rotate"
+kind = "cc"
+channel = 0
+number = 21
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 37
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "ring"
+kind = "led_ring_cc"
+channel = 0
+number = 53
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "enc7"
+type = "encoder"
+col = 6
+row = 0
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "rotate"
+kind = "cc"
+channel = 0
+number = 22
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 38
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "ring"
+kind = "led_ring_cc"
+channel = 0
+number = 54
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "enc8"
+type = "encoder"
+col = 7
+row = 0
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "rotate"
+kind = "cc"
+channel = 0
+number = 23
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 39
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "ring"
+kind = "led_ring_cc"
+channel = 0
+number = 55
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttn11"
+type = "button"
+col = 0
+row = 1
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 89
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 89
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttn21"
+type = "button"
+col = 1
+row = 1
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 90
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 90
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttn31"
+type = "button"
+col = 2
+row = 1
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 40
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 40
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttn41"
+type = "button"
+col = 3
+row = 1
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 41
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 41
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttn51"
+type = "button"
+col = 4
+row = 1
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 42
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 42
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttn61"
+type = "button"
+col = 5
+row = 1
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 43
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 43
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttn71"
+type = "button"
+col = 6
+row = 1
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 44
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 44
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttn81"
+type = "button"
+col = 7
+row = 1
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 45
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 45
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttn12"
+type = "button"
+col = 0
+row = 2
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 87
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 87
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttn22"
+type = "button"
+col = 1
+row = 2
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 88
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 88
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttn32"
+type = "button"
+col = 2
+row = 2
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 91
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 91
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttn42"
+type = "button"
+col = 3
+row = 2
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 92
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 92
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttn52"
+type = "button"
+col = 4
+row = 2
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 86
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 86
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttn62"
+type = "button"
+col = 5
+row = 2
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 93
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 93
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttn72"
+type = "button"
+col = 6
+row = 2
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 94
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 94
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware]]
+id = "bttn82"
+type = "button"
+col = 7
+row = 2
+col_span = 1
+row_span = 1
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.inputs]]
+label = "press"
+kind = "note"
+channel = 0
+number = 95
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".hardware.outputs]]
+label = "led"
+kind = "led"
+channel = 0
+number = 95
+
+[[devices."X-TOUCH MINI:X-TOUCH MINI MIDI 1".layers]]
+name = "MCMode"
+bank_offset = 0
+icons = []

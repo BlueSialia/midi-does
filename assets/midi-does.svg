@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#17152B"/>
+      <stop offset="1" stop-color="#080812"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+
+  <!-- App-icon background -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- MIDI keyboard/controller body -->
+  <rect x="74" y="176" width="364" height="190" rx="34"
+        fill="#24233B" stroke="url(#accent)" stroke-width="10"/>
+
+  <!-- Pads/controls -->
+  <circle cx="121" cy="222" r="14" fill="#22D3EE"/>
+  <circle cx="168" cy="222" r="14" fill="#8B5CF6"/>
+  <circle cx="215" cy="222" r="14" fill="#22D3EE"/>
+  <circle cx="262" cy="222" r="14" fill="#8B5CF6"/>
+  <circle cx="309" cy="222" r="14" fill="#22D3EE"/>
+  <circle cx="356" cy="222" r="14" fill="#8B5CF6"/>
+
+  <!-- White piano keys -->
+  <g fill="#F7F7FB">
+    <rect x="103" y="266" width="48" height="77" rx="5"/>
+    <rect x="153" y="266" width="48" height="77" rx="5"/>
+    <rect x="203" y="266" width="48" height="77" rx="5"/>
+    <rect x="253" y="266" width="48" height="77" rx="5"/>
+    <rect x="303" y="266" width="48" height="77" rx="5"/>
+    <rect x="353" y="266" width="48" height="77" rx="5"/>
+  </g>
+
+  <!-- Black piano keys -->
+  <g fill="#12121F">
+    <rect x="136" y="266" width="27" height="46" rx="4"/>
+    <rect x="186" y="266" width="27" height="46" rx="4"/>
+    <rect x="286" y="266" width="27" height="46" rx="4"/>
+    <rect x="336" y="266" width="27" height="46" rx="4"/>
+  </g>
+
+  <!-- MIDI signal / connection motif -->
+  <path d="M117 139 C164 101, 219 101, 256 139 C293 177, 348 177, 395 139"
+        fill="none" stroke="url(#accent)" stroke-width="14"
+        stroke-linecap="round"/>
+  <circle cx="117" cy="139" r="9" fill="#22D3EE"/>
+  <circle cx="395" cy="139" r="9" fill="#8B5CF6"/>
+</svg>

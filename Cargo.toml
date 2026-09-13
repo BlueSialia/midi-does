@@ -1,0 +1,71 @@
+[package]
+name = "midi-does"
+version = "0.1.0"
+edition = "2021"
+description = "Map MIDI controllers to PipeWire audio controls and shell commands"
+license-file = "LICENSE.md"
+repository = "https://github.com/BlueSialia/midi-does"
+homepage = "https://github.com/BlueSialia/midi-does"
+authors = ["Jorge Domínguez"]
+
+[dependencies]
+iced = { version = "0.14", features = ["tokio", "wgpu", "image", "canvas"] }
+midir = "0.11"
+pipewire = "0.10"
+ksni = { version = "0.3", features = ["blocking"] }
+toml = "1"
+serde = { version = "1", features = ["derive"] }
+dirs = "6"
+thiserror = "2"
+log = "0.4"
+env_logger = "0.11"
+dark-light = "2"
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[package.metadata.deb]
+maintainer = "Jorge Domínguez"
+copyright = "2026, Jorge Domínguez"
+extended-description = """\
+Map any MIDI controller to PipeWire audio controls and shell commands. Use \
+knobs, faders, and buttons on your MIDI hardware to manage system audio — \
+volume, mute, routing, default devices — or run arbitrary commands with MIDI \
+value substitution."""
+depends = "$auto"
+section = "sound"
+priority = "optional"
+assets = [
+    ["target/release/midi-does", "usr/bin/", "755"],
+    ["data/midi-does.desktop", "usr/share/applications/", "644"],
+    ["assets/midi-does-16.png", "usr/share/icons/hicolor/16x16/apps/midi-does.png", "644"],
+    ["assets/midi-does-22.png", "usr/share/icons/hicolor/22x22/apps/midi-does.png", "644"],
+    ["assets/midi-does-24.png", "usr/share/icons/hicolor/24x24/apps/midi-does.png", "644"],
+    ["assets/midi-does-32.png", "usr/share/icons/hicolor/32x32/apps/midi-does.png", "644"],
+    ["assets/midi-does-48.png", "usr/share/icons/hicolor/48x48/apps/midi-does.png", "644"],
+    ["assets/midi-does-64.png", "usr/share/icons/hicolor/64x64/apps/midi-does.png", "644"],
+    ["assets/midi-does-128.png", "usr/share/icons/hicolor/128x128/apps/midi-does.png", "644"],
+    ["assets/midi-does-256.png", "usr/share/icons/hicolor/256x256/apps/midi-does.png", "644"],
+    ["assets/midi-does-512.png", "usr/share/icons/hicolor/512x512/apps/midi-does.png", "644"],
+    ["assets/midi-does.svg", "usr/share/icons/hicolor/scalable/apps/midi-does.svg", "644"],
+]
+
+[package.metadata.generate-rpm]
+license = "Hippocratic License 3.0"
+summary = "Map MIDI controllers to PipeWire audio controls and shell commands"
+url = "https://github.com/BlueSialia/midi-does"
+assets = [
+    { source = "target/release/midi-does", dest = "/usr/bin/midi-does", mode = "755" },
+    { source = "data/midi-does.desktop", dest = "/usr/share/applications/midi-does.desktop", mode = "644" },
+    { source = "assets/midi-does-16.png", dest = "/usr/share/icons/hicolor/16x16/apps/midi-does.png", mode = "644" },
+    { source = "assets/midi-does-22.png", dest = "/usr/share/icons/hicolor/22x22/apps/midi-does.png", mode = "644" },
+    { source = "assets/midi-does-24.png", dest = "/usr/share/icons/hicolor/24x24/apps/midi-does.png", mode = "644" },
+    { source = "assets/midi-does-32.png", dest = "/usr/share/icons/hicolor/32x32/apps/midi-does.png", mode = "644" },
+    { source = "assets/midi-does-48.png", dest = "/usr/share/icons/hicolor/48x48/apps/midi-does.png", mode = "644" },
+    { source = "assets/midi-does-64.png", dest = "/usr/share/icons/hicolor/64x64/apps/midi-does.png", mode = "644" },
+    { source = "assets/midi-does-128.png", dest = "/usr/share/icons/hicolor/128x128/apps/midi-does.png", mode = "644" },
+    { source = "assets/midi-does-256.png", dest = "/usr/share/icons/hicolor/256x256/apps/midi-does.png", mode = "644" },
+    { source = "assets/midi-does-512.png", dest = "/usr/share/icons/hicolor/512x512/apps/midi-does.png", mode = "644" },
+    { source = "assets/midi-does.svg", dest = "/usr/share/icons/hicolor/scalable/apps/midi-does.svg", mode = "644" },
+]
