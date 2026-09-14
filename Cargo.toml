@@ -1,6 +1,6 @@
 [package]
 name = "midi-does"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Map MIDI controllers to PipeWire audio controls and shell commands"
 license-file = "LICENSE.md"
