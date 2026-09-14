@@ -10,8 +10,26 @@
     let
       systems = [ "x86_64-linux" "aarch64-linux" ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
+      lib = nixpkgs.lib;
 
       cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+
+      runtimeLibs = pkgs: with pkgs; [
+        vulkan-loader
+        libxkbcommon
+        libx11
+        libxcb
+        libxcursor
+        libxrandr
+        libxi
+        libxext
+        libxinerama
+        libxxf86vm
+        wayland
+        alsa-lib
+        pipewire
+        udev
+      ];
     in
     {
       packages = forAllSystems (system:
@@ -43,7 +61,12 @@
               lockFile = ./Cargo.lock;
             };
 
-            nativeBuildInputs = with pkgs; [ pkg-config libclang ];
+            nativeBuildInputs = with pkgs; [
+              pkg-config
+              libclang
+              makeWrapper
+              addDriverRunpath
+            ];
             buildInputs = with pkgs; [
               pipewire
               alsa-lib
@@ -62,6 +85,23 @@
 
             LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
             BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.glibc.dev}/include";
+
+            postInstall = ''
+              install -Dm644 data/midi-does.desktop \
+                "$out/share/applications/midi-does.desktop"
+              for size in 16 22 24 32 48 64 128 256 512; do
+                install -Dm644 "assets/midi-does-''${size}.png" \
+                  "$out/share/icons/hicolor/''${size}x''${size}/apps/midi-does.png"
+              done
+              install -Dm644 assets/midi-does.svg \
+                "$out/share/icons/hicolor/scalable/apps/midi-does.svg"
+            '';
+
+            postFixup = ''
+              addDriverRunpath $out/bin/midi-does
+              wrapProgram $out/bin/midi-does \
+                --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath (runtimeLibs pkgs)}
+            '';
 
             meta = {
               description = "Map MIDI controllers to PipeWire audio controls and shell commands";
@@ -84,23 +124,6 @@
             inherit system;
             overlays = [ (import rust-overlay) ];
           };
-
-          runtimeLibs = with pkgs; [
-            vulkan-loader
-            libxkbcommon
-            libx11
-            libxcb
-            libxcursor
-            libxrandr
-            libxi
-            libxext
-            libxinerama
-            libxxf86vm
-            wayland
-            alsa-lib
-            pipewire
-            udev
-          ];
         in
         {
           default = pkgs.mkShell {
@@ -131,7 +154,7 @@
               export C_INCLUDE_PATH="${pkgs.glibc.dev}/include"
             '';
 
-            LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath runtimeLibs;
+            LD_LIBRARY_PATH = lib.makeLibraryPath (runtimeLibs pkgs);
           };
         });
     };
