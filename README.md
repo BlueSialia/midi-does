@@ -10,6 +10,8 @@
 
 Map any MIDI controller to PipeWire audio controls and shell commands. Use knobs, faders, and buttons on your MIDI hardware to manage system audio — volume, mute, routing, default devices — or run arbitrary commands with MIDI value substitution.
 
+For more details on the project structure and design, see the [ADR](ADR.md) document.
+
 ## Feature Coverage
 
 <details>
@@ -267,7 +269,7 @@ See also the list of [contributors](https://github.com/BlueSialia/midi-does/cont
 
 ## License
 
-This project is licensed under the Hippocratic License 3.0 - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the Hippocratic License 3.0 - see the [LICENSE.md](LICENSE.md) file for details.
 
 ## Acknowledgments
 

@@ -6,7 +6,7 @@ description = "Map MIDI controllers to PipeWire audio controls and shell command
 license-file = "LICENSE.md"
 repository = "https://github.com/BlueSialia/midi-does"
 homepage = "https://github.com/BlueSialia/midi-does"
-authors = ["Jorge Domínguez"]
+authors = ["Jorge Domínguez Arnáez"]
 
 [dependencies]
 iced = { version = "0.14", features = ["tokio", "wgpu", "image", "canvas"] }

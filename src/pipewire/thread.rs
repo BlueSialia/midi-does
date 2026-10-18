@@ -12,7 +12,7 @@ use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use super::objects::{PwCommand, PwEvent, PwObject, PwObjectType};
 use super::spa::{build_props_pod, build_route_pod, parse_props_volume, parse_route, RouteInfo};
@@ -21,6 +21,8 @@ use super::spa::{build_props_pod, build_route_pod, parse_props_volume, parse_rou
 const PUBLISH_INTERVAL: Duration = Duration::from_millis(50);
 /// How often commands from the main thread are drained.
 const COMMAND_INTERVAL: Duration = Duration::from_millis(10);
+/// How often to re-request device routes that never arrived.
+const ROUTE_RECONCILE_INTERVAL: Duration = Duration::from_secs(2);
 /// How long to wait for the first audio-graph snapshot before deciding the
 /// PipeWire connection is not live and retrying.
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(3);
@@ -37,8 +39,12 @@ struct State {
     devices: HashMap<u32, (Rc<Device>, DeviceListener)>,
     /// Device id -> its routes, populated from `Route` param events.
     routes: HashMap<u32, Vec<RouteInfo>>,
+    /// Node id -> device id, from registry props; drives `Route` subscription.
+    node_device: HashMap<u32, u32>,
     /// Node id -> (device id, ACP profile device index) for hardware endpoints.
     node_routes: HashMap<u32, (u32, u32)>,
+    /// Rate limiter for route-mirror warnings.
+    last_route_warn: Cell<Option<Instant>>,
     /// Port id -> (owning node id, direction, channel).
     ports: HashMap<u32, (u32, Direction, String)>,
     /// Link id -> (bound proxy, listener).
@@ -79,11 +85,56 @@ fn node_route_info(state: &State, node_id: u32) -> Option<(u32, RouteInfo)> {
     Some((device_id, route.clone()))
 }
 
-/// Mirror a volume/mute change onto the device route backing a hardware node,
-/// so the session manager (and desktop settings UI) observes it. No-op for
-/// nodes without a device route (streams, virtual sinks/sources).
+/// Device ids that back an audio node but still have no route information.
+fn devices_missing_routes(state: &State) -> Vec<u32> {
+    let mut ids: Vec<u32> = state
+        .node_device
+        .values()
+        .filter(|id| {
+            !state
+                .routes
+                .get(*id)
+                .is_some_and(|routes| !routes.is_empty())
+        })
+        .copied()
+        .collect();
+    ids.sort_unstable();
+    ids.dedup();
+    ids
+}
+
+/// Subscribe `Route` on devices that back an audio node, retrying until they
+/// report routes. Other devices are skipped: subscribing without `Route` is fatal.
+fn sync_route_subscriptions(state: &State) {
+    for device_id in devices_missing_routes(state) {
+        if let Some((device, _)) = state.devices.get(&device_id) {
+            device.subscribe_params(&[ParamType::Route]);
+        }
+    }
+}
+
+/// Rate-limited warning that a device-backed node could not be mirrored.
+fn warn_route_miss(state: &State, node_id: u32) {
+    const WARN_INTERVAL: Duration = Duration::from_secs(10);
+    let now = Instant::now();
+    if state
+        .last_route_warn
+        .get()
+        .is_some_and(|last| now.duration_since(last) < WARN_INTERVAL)
+    {
+        return;
+    }
+    state.last_route_warn.set(Some(now));
+    log::warn!("no device route resolved for node {node_id}; volume/mute mirror skipped");
+}
+
+/// Mirror a volume/mute change onto the device route backing a hardware node, so
+/// the session manager observes it. No-op for nodes without a device route.
 fn apply_route(state: &State, node_id: u32, volume: Option<f64>, muted: Option<bool>) {
     let Some((device_id, route)) = node_route_info(state, node_id) else {
+        if state.node_device.contains_key(&node_id) {
+            warn_route_miss(state, node_id);
+        }
         return;
     };
     let linear = volume.map(|v| v.max(0.0).powi(3) as f32);
@@ -91,8 +142,9 @@ fn apply_route(state: &State, node_id: u32, volume: Option<f64>, muted: Option<b
     let Some(pod) = Pod::from_bytes(&bytes) else {
         return;
     };
-    if let Some((device, _)) = state.devices.get(&device_id) {
-        device.set_param(ParamType::Route, 0, pod);
+    match state.devices.get(&device_id) {
+        Some((device, _)) => device.set_param(ParamType::Route, 0, pod),
+        None => warn_route_miss(state, node_id),
     }
 }
 
@@ -297,10 +349,17 @@ pub fn spawn(
                             .unwrap_or("")
                             .to_string();
 
-                        // Hardware endpoints belong to a Device and are backed by
-                        // one of its routes. Record the mapping from the node
-                        // `info` event below, since `card.profile.device` is not
-                        // present in the registry global props.
+                        // `device.id` is available here (endpoints only); the route
+                        // selector `card.profile.device` arrives via `info` below.
+                        let is_endpoint = object_type != PwObjectType::Stream;
+                        let device_id = if is_endpoint {
+                            global
+                                .props
+                                .and_then(|p| p.get("device.id"))
+                                .and_then(|v| v.parse::<u32>().ok())
+                        } else {
+                            None
+                        };
 
                         let description = if object_type == PwObjectType::Stream {
                             match app_name(global.props) {
@@ -331,6 +390,10 @@ pub fn spawn(
                                     muted: false,
                                 });
                             }
+                            if let Some(device_id) = device_id {
+                                s.node_device.insert(node_id, device_id);
+                            }
+                            sync_route_subscriptions(&s);
                         }
 
                         let node: Node = match registry_global.bind(global) {
@@ -343,22 +406,25 @@ pub fn spawn(
                         let listener = node
                             .add_listener_local()
                             .info(move |info| {
+                                if !is_endpoint {
+                                    return;
+                                }
                                 let Some(props) = info.props() else { return };
-                                let Some(device) =
-                                    props.get("device.id").and_then(|v| v.parse::<u32>().ok())
-                                else {
-                                    return;
-                                };
-                                let Some(profile_device) = props
+                                let device =
+                                    props.get("device.id").and_then(|v| v.parse::<u32>().ok());
+                                let profile_device = props
                                     .get("card.profile.device")
-                                    .and_then(|v| v.parse::<u32>().ok())
-                                else {
-                                    return;
-                                };
-                                state_info
-                                    .borrow_mut()
-                                    .node_routes
-                                    .insert(node_id, (device, profile_device));
+                                    .and_then(|v| v.parse::<u32>().ok());
+                                let mut s = state_info.borrow_mut();
+                                if let Some(device) = device {
+                                    s.node_device.insert(node_id, device);
+                                }
+                                if let (Some(device), Some(profile_device)) =
+                                    (device, profile_device)
+                                {
+                                    s.node_routes.insert(node_id, (device, profile_device));
+                                }
+                                sync_route_subscriptions(&s);
                             })
                             .param(move |_seq, ptype, _index, _next, pod| {
                                 if ptype != ParamType::Props {
@@ -460,24 +526,11 @@ pub fn spawn(
                             Err(_) => return,
                         };
 
-                        // Subscribe only after the device advertises a Route param:
-                        // subscribing on a device without one emits a fatal core error.
+                        // Route subscription is handled by `sync_route_subscriptions`.
                         let device = Rc::new(device);
-                        let subscribed = Rc::new(Cell::new(false));
-                        let device_info = Rc::clone(&device);
-                        let subscribed_info = Rc::clone(&subscribed);
                         let state_route = state_global.clone();
                         let listener = device
                             .add_listener_local()
-                            .info(move |info| {
-                                if subscribed_info.get() {
-                                    return;
-                                }
-                                if info.params().iter().any(|p| p.id() == ParamType::Route) {
-                                    subscribed_info.set(true);
-                                    device_info.subscribe_params(&[ParamType::Route]);
-                                }
-                            })
                             .param(move |_seq, ptype, _index, _next, pod| {
                                 if ptype != ParamType::Route {
                                     return;
@@ -497,10 +550,9 @@ pub fn spawn(
                                 }
                             })
                             .register();
-                        state_global
-                            .borrow_mut()
-                            .devices
-                            .insert(device_id, (device, listener));
+                        let mut s = state_global.borrow_mut();
+                        s.devices.insert(device_id, (device, listener));
+                        sync_route_subscriptions(&s);
                     }
                     _ => {}
                 })
@@ -510,6 +562,7 @@ pub fn spawn(
                     s.nodes.remove(&id);
                     s.devices.remove(&id);
                     s.routes.remove(&id);
+                    s.node_device.remove(&id);
                     s.node_routes.remove(&id);
                     s.ports.remove(&id);
                     s.links.remove(&id);
@@ -553,6 +606,15 @@ pub fn spawn(
                 }
             });
             command_timer.update_timer(Some(COMMAND_INTERVAL), Some(COMMAND_INTERVAL));
+
+            let state_reconcile = state.clone();
+            let reconcile_timer = mainloop.loop_().add_timer(move |_| {
+                sync_route_subscriptions(&state_reconcile.borrow());
+            });
+            reconcile_timer.update_timer(
+                Some(ROUTE_RECONCILE_INTERVAL),
+                Some(ROUTE_RECONCILE_INTERVAL),
+            );
 
             // `connect_rc` connects lazily, so a successful connection does not
             // prove a live server. Quit and retry if no audio graph has been
@@ -695,6 +757,33 @@ mod tests {
         assert_eq!(device_id, 73);
         assert_eq!(route.index, 0);
         assert!(node_route_info(&state, 999).is_none());
+    }
+
+    /// #feature PW-VOL — missing-route devices backing a node, de-duplicated.
+    #[test]
+    fn test_devices_missing_routes() {
+        let mut state = State::default();
+        state.node_device.insert(10, 100);
+        state.node_device.insert(11, 100);
+        state.node_device.insert(12, 200);
+        state.routes.insert(
+            100,
+            vec![RouteInfo {
+                index: 0,
+                direction: 1,
+                device: 0,
+                devices: vec![0],
+            }],
+        );
+        assert_eq!(devices_missing_routes(&state), vec![200]);
+
+        // A device with an empty route list still needs (re)subscribing.
+        state.routes.insert(200, vec![]);
+        assert_eq!(devices_missing_routes(&state), vec![200]);
+
+        // Duplicate node -> device mappings are collapsed.
+        state.node_device.insert(13, 200);
+        assert_eq!(devices_missing_routes(&state), vec![200]);
     }
 
     fn wpctl_volume(id: u32) -> Option<f64> {
