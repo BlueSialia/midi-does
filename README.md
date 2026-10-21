@@ -123,47 +123,46 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-- **Rust** (stable, via [rustup](https://rustup.rs) or [mise](https://mise.jdx.dev))
+- Rust 1.99.1 ([rustup](https://rustup.rs) or [mise](https://mise.jdx.dev))
+- Nix with flakes enabled (optional, for the reproducible development shell)
 - **System libraries**: `pipewire`, `alsa-lib`, `udev`, `vulkan-loader`, `libxkbcommon`, `libx11`, `libxcb`, `libxcursor`, `libxrandr`, `libxi`, `libxext`, `libxinerama`, `libxxf86vm`, `wayland`, `dbus`, `libclang`, plus `pkg-config`
 - A running **PipeWire** session
 - A **MIDI controller** connected to your system (ALSA MIDI)
 
-The exact package names vary by distribution; most systems ship these split into development packages (`-dev` on Debian/Ubuntu, `-devel` on Fedora/openSUSE). On NixOS none of this needs to be installed by hand. The development shell provides it (see [Nix](#nix)).
+The exact package names vary by distribution; most systems ship these split into development packages (`-dev` on Debian/Ubuntu, `-devel` on Fedora/openSUSE). On NixOS none of this needs to be installed by hand. The development shell provides it (see [Setup](#setup)).
 
 ### Setup
 
-Clone the repository and build:
+Clone the repository, enable the local Git hooks, and build:
 
-```bash
+```sh
 git clone git@github.com:BlueSialia/midi-does.git
 cd midi-does
+./setup-hooks.sh
 cargo build --release
 ```
 
 The binary will be at `target/release/midi-does`.
 
-Run `./setup-hooks.sh` once to enable the Conventional Commits commit-msg hook (see [Automations](#automations)).
+In the repository settings, enable **Settings → Actions → General → Workflow permissions → “Allow GitHub Actions to create and approve pull requests”** so the release workflow can open its automated pull request.
 
-#### Nix
+With Nix and direnv:
 
-The repository ships a `flake.nix`, providing the Rust toolchain and the system libraries listed above. On NixOS (or anywhere with Nix and flakes enabled) this is the most automatic way to get started: with [direnv](https://direnv.net) installed, `direnv allow` is enough; otherwise enter the shell explicitly.
-
-```bash
-nix develop
+```sh
+direnv allow
 ```
 
-Then run the usual `cargo` commands inside the shell, or prefix them with
-`nix develop --command`, e.g. `nix develop --command cargo build --release`.
+Otherwise, enter the development shell with `nix develop`. The shell provides the Rust toolchain and the system libraries listed above, so on NixOS this is the most automatic way to get started. Then run the usual `cargo` commands inside the shell, or prefix them with `nix develop --command`, e.g. `nix develop --command cargo build --release`.
 
-### Running the Client
+### Running
 
-```bash
+```sh
 cargo run
 ```
 
 Or run the built binary directly:
 
-```bash
+```sh
 ./target/release/midi-does
 ```
 
@@ -171,32 +170,44 @@ Or run the built binary directly:
 
 ### Unit Tests
 
+You can run the unit tests with:
+
 ```bash
-cargo test
+cargo test --workspace --lib --bins
 ```
 
-Tests are located in each source file (inline `#[cfg(test)]` modules) and tagged with `#feature <ID>` comments matching the feature checklist above.
+Tests are located in each source file (inline `#[cfg(test)]` modules).
 
 ### Integration Tests
 
-Integration tests live in the `tests/` directory and exercise end-to-end config roundtrips through the filesystem.
+You can run the integration tests with:
 
-```bash
-cargo test --test config_integration
+```sh
+cargo test --workspace --test integration
 ```
+
+Integration tests live in the `tests/` directory.
 
 ### Linting
 
-```bash
-cargo clippy -- -D warnings
+On top of it you should also periodically run the linter with:
+
+```sh
+cargo clippy --all-targets --all-features -- -D warnings
+```
+
+And verify that the documentation builds without warnings:
+
+```sh
+RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps
 ```
 
 ### Coding Style
 
-Standard `rustfmt`:
+In order to maintain a similar style over the codebase we use:
 
-```bash
-cargo fmt --check
+```sh
+cargo fmt --all -- --check
 ```
 
 ## Install
@@ -234,6 +245,8 @@ The app reads its configuration from `$XDG_CONFIG_HOME/midi-does/config.toml` (t
 
 | Dependency | Purpose |
 |---|---|
+| [Rust](https://rust-lang.org/) | Application language |
+| [Cargo](https://doc.rust-lang.org/cargo/) | The Rust package manager |
 | [iced](https://iced.rs) | GUI framework |
 | [midir](https://crates.io/crates/midir) | MIDI input discovery and message parsing |
 | [pipewire](https://crates.io/crates/pipewire) (v0.10) | PipeWire bindings (object discovery, volume/mute, routing) |
@@ -247,11 +260,11 @@ The app reads its configuration from `$XDG_CONFIG_HOME/midi-does/config.toml` (t
 
 ## Automations
 
-CI, release packaging, and git hooks are documented in [AUTOMATIONS.md](AUTOMATIONS.md).
+Local Git hooks enforce Conventional Commits. CI runs formatting, Clippy, tests, documentation, unused-dependency, and security checks. Binary size reporting and release publishing are also automated.
 
-- Run `./setup-hooks.sh` once to enable the Conventional Commits commit-msg hook locally.
-- CI runs formatting, Clippy, tests, docs, unused-dependency checks (`cargo machete`), and a `cargo-deny` security/license audit.
-- Every merge to `main` opens an automated release PR; merging it (squash) tags a release and attaches `.deb` and `.rpm` packages plus a Nix recipe.
+Release publishing produces `.deb` and `.rpm` packages plus a Nix recipe alongside the raw binary.
+
+See [AUTOMATIONS.md](AUTOMATIONS.md) for more information and details.
 
 ## Contributing
 

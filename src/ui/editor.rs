@@ -1,5 +1,5 @@
 use iced::alignment::Vertical;
-use iced::widget::{button, container, pick_list, row, text, text_input, Column};
+use iced::widget::{Column, button, container, pick_list, row, text, text_input};
 use iced::{Element, Length};
 
 use crate::app::App;

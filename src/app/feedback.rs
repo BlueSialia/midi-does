@@ -10,8 +10,8 @@ use super::App;
 mod eval;
 
 use eval::{
-    build_led_ring_sysex, build_scribble_sysex, evaluate_source_with_context, interpret_feedback,
-    ring_value, visual_value, EvalContext,
+    EvalContext, build_led_ring_sysex, build_scribble_sysex, evaluate_source_with_context,
+    interpret_feedback, ring_value, visual_value,
 };
 
 pub(super) const MCU_SYSEX_HEADER: &[u8] = &[0xF0, 0x00, 0x00, 0x66, 0x14];

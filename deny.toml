@@ -1,4 +1,4 @@
-# cargo-deny configuration for midi-does.
+# cargo-deny configuration for this Rust project.
 
 [advisories]
 yanked = "deny"
@@ -41,8 +41,9 @@ license-files = [{ path = "LICENSE.md", hash = 0xd9915fd9 }]
 ignore = true
 
 [bans]
-# iced and its GUI dependency tree legitimately ship multiple versions of
-# several crates, so duplicates are warned rather than denied.
+# Dependencies may legitimately contain multiple versions of a crate. Iced and
+# its GUI dependency tree ship multiple versions of several crates, so
+# duplicates are warned rather than denied.
 multiple-versions = "warn"
 wildcards = "allow"
 highlight = "all"

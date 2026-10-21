@@ -1,15 +1,15 @@
-use iced::keyboard::{self, Key};
 use iced::Task;
+use iced::keyboard::{self, Key};
 
 use crate::actions::Action;
 use crate::config::{
-    default_grid_cols, default_grid_rows, default_layers, DeviceConfig, FeedbackEntry, HardwareDef,
-    LayerDef, SignalEntry, SoftwareDef, Source,
+    DeviceConfig, FeedbackEntry, HardwareDef, LayerDef, SignalEntry, SoftwareDef, Source,
+    default_grid_cols, default_grid_rows, default_layers,
 };
 use crate::ui;
 use crate::ui::faceplate;
 
-use super::{next_hardware_id, take_at, valid_layer_rename, App, AppMessage};
+use super::{App, AppMessage, next_hardware_id, take_at, valid_layer_rename};
 
 impl App {
     pub(super) fn handle_ui_message(&mut self, msg: ui::Message) -> Task<AppMessage> {
@@ -79,25 +79,25 @@ impl App {
                     return Task::none();
                 }
                 let mut renamed = false;
-                if let Some(device) = self.selected_device_mut() {
-                    if valid_layer_rename(&device.layers, &old, &new) {
-                        for layer in &mut device.layers {
-                            if layer.name == old {
-                                layer.name = new.clone();
-                            }
+                if let Some(device) = self.selected_device_mut()
+                    && valid_layer_rename(&device.layers, &old, &new)
+                {
+                    for layer in &mut device.layers {
+                        if layer.name == old {
+                            layer.name = new.clone();
                         }
-                        self.mark_dirty();
-                        renamed = true;
                     }
+                    self.mark_dirty();
+                    renamed = true;
                 }
                 if renamed {
                     if self.selected_layer.as_deref() == Some(old.as_str()) {
                         self.selected_layer = Some(new.clone());
                     }
-                    if let Some(device_name) = &self.selected_device_name {
-                        if self.active_layers.get(device_name) == Some(&old) {
-                            self.active_layers.insert(device_name.clone(), new.clone());
-                        }
+                    if let Some(device_name) = &self.selected_device_name
+                        && self.active_layers.get(device_name) == Some(&old)
+                    {
+                        self.active_layers.insert(device_name.clone(), new.clone());
                     }
                     self.send_visual_evaluation();
                 } else {
@@ -220,18 +220,18 @@ impl App {
                     self.status_message = format!("Hardware id '{name}' already exists");
                     return Task::none();
                 }
-                if let Some(device) = self.selected_device_mut() {
-                    if let Some(hw) = device.hardware.iter_mut().find(|h| h.id == old_id) {
-                        for layer in &mut device.layers {
-                            for icon in &mut layer.icons {
-                                if icon.hardware == old_id {
-                                    icon.hardware = name.clone();
-                                }
+                if let Some(device) = self.selected_device_mut()
+                    && let Some(hw) = device.hardware.iter_mut().find(|h| h.id == old_id)
+                {
+                    for layer in &mut device.layers {
+                        for icon in &mut layer.icons {
+                            if icon.hardware == old_id {
+                                icon.hardware = name.clone();
                             }
                         }
-                        hw.id = name;
-                        self.mark_dirty();
                     }
+                    hw.id = name;
+                    self.mark_dirty();
                 }
                 if let Some(device_name) = device_name {
                     self.visual_values
@@ -624,31 +624,31 @@ impl App {
 
     fn confirm_add_device(&mut self) -> Task<AppMessage> {
         self.show_add_dialog = false;
-        if let Some(idx) = self.add_dialog_state.selected_port {
-            if let Some(port) = self.add_dialog_state.available_ports.get(idx) {
-                let name = port.name.clone();
-                if !self.config.devices.contains_key(&name) {
-                    self.config.insert_device(
-                        name.clone(),
-                        DeviceConfig {
-                            port_name: name.clone(),
-                            grid_columns: default_grid_cols(),
-                            grid_rows: default_grid_rows(),
-                            hardware: Vec::new(),
-                            layers: default_layers(),
-                        },
-                    );
-                    self.mark_dirty();
-                    self.active_layers.insert(name.clone(), "A".to_string());
-                    match self.midi_manager.connect(&name) {
-                        Ok(()) => {}
-                        Err(e) => {
-                            self.status_message = format!("Failed to connect: {e}");
-                        }
+        if let Some(idx) = self.add_dialog_state.selected_port
+            && let Some(port) = self.add_dialog_state.available_ports.get(idx)
+        {
+            let name = port.name.clone();
+            if !self.config.devices.contains_key(&name) {
+                self.config.insert_device(
+                    name.clone(),
+                    DeviceConfig {
+                        port_name: name.clone(),
+                        grid_columns: default_grid_cols(),
+                        grid_rows: default_grid_rows(),
+                        hardware: Vec::new(),
+                        layers: default_layers(),
+                    },
+                );
+                self.mark_dirty();
+                self.active_layers.insert(name.clone(), "A".to_string());
+                match self.midi_manager.connect(&name) {
+                    Ok(()) => {}
+                    Err(e) => {
+                        self.status_message = format!("Failed to connect: {e}");
                     }
-                    if let Ok(h) = self.midi_manager.connect_output(&name) {
-                        self.output_handles.insert(name.clone(), h);
-                    }
+                }
+                if let Ok(h) = self.midi_manager.connect_output(&name) {
+                    self.output_handles.insert(name.clone(), h);
                 }
             }
         }

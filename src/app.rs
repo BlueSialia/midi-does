@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 use std::time::{Duration, Instant};
 
 use iced::keyboard;
@@ -17,7 +17,7 @@ mod feedback;
 mod state;
 mod ui_handlers;
 
-use feedback::{feedback_worker, FeedbackBus, FeedbackOutput, FeedbackResult};
+use feedback::{FeedbackBus, FeedbackOutput, FeedbackResult, feedback_worker};
 
 /// How long a volume set by the app is protected from stale PipeWire refresh values.
 const VOLUME_FIGHT_WINDOW: Duration = Duration::from_millis(500);
@@ -315,11 +315,7 @@ pub(crate) fn encoder_delta(raw: u8, mode: EncoderMode) -> i8 {
         EncoderMode::SignMagnitude => {
             let sign = (raw & 0x40) != 0;
             let mag = (raw & 0x3F) as i8;
-            if sign {
-                -mag
-            } else {
-                mag
-            }
+            if sign { -mag } else { mag }
         }
         EncoderMode::TwosComplement => {
             if raw < 64 {

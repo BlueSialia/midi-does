@@ -124,33 +124,31 @@ impl iced::widget::canvas::Program<FaceplateMessage> for FaceplateState {
         if let iced::widget::canvas::Event::Mouse(iced::mouse::Event::ButtonPressed(
             iced::mouse::Button::Left,
         )) = event
+            && let Some(cursor) = _cursor.position_in(bounds)
         {
-            if let Some(cursor) = _cursor.position_in(bounds) {
-                if let Some((idx, _)) = self.icon_at(cursor, bounds.size(), &self.hardware) {
-                    return Some(
-                        iced::widget::canvas::Action::publish(FaceplateMessage::ClickIcon(idx))
-                            .and_capture(),
-                    );
-                }
+            if let Some((idx, _)) = self.icon_at(cursor, bounds.size(), &self.hardware) {
+                return Some(
+                    iced::widget::canvas::Action::publish(FaceplateMessage::ClickIcon(idx))
+                        .and_capture(),
+                );
+            }
 
-                let cs = self.cell_size(bounds.size());
-                let go = self.grid_origin(bounds.size());
-                if let Some((col, row)) = cell_at(cursor, go, cs, self.grid_columns, self.grid_rows)
-                {
-                    let occupied = self.hardware.iter().any(|icon| {
-                        col >= icon.col
-                            && col < icon.col + icon.col_span
-                            && row >= icon.row
-                            && row < icon.row + icon.row_span
-                    });
-                    if !occupied {
-                        return Some(
-                            iced::widget::canvas::Action::publish(
-                                FaceplateMessage::ClickEmptyCell(col, row),
-                            )
-                            .and_capture(),
-                        );
-                    }
+            let cs = self.cell_size(bounds.size());
+            let go = self.grid_origin(bounds.size());
+            if let Some((col, row)) = cell_at(cursor, go, cs, self.grid_columns, self.grid_rows) {
+                let occupied = self.hardware.iter().any(|icon| {
+                    col >= icon.col
+                        && col < icon.col + icon.col_span
+                        && row >= icon.row
+                        && row < icon.row + icon.row_span
+                });
+                if !occupied {
+                    return Some(
+                        iced::widget::canvas::Action::publish(FaceplateMessage::ClickEmptyCell(
+                            col, row,
+                        ))
+                        .and_capture(),
+                    );
                 }
             }
         }

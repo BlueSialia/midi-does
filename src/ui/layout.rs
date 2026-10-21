@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use iced::alignment::Vertical;
 use iced::widget::{
-    button, column, container, pick_list, row, scrollable, text, text_input, Column,
+    Column, button, column, container, pick_list, row, scrollable, text, text_input,
 };
 use iced::{Element, Length, Padding};
 
@@ -10,8 +10,8 @@ use crate::app::App;
 use crate::config::DeviceConfig;
 use crate::ui::faceplate::{self, FaceplateState};
 
-use super::styles::{mmon_style, panel_style, sbar_style};
 use super::Message;
+use super::styles::{mmon_style, panel_style, sbar_style};
 
 pub(super) fn status_bar(app: &App) -> Element<'_, Message> {
     let status_text = text(&app.status_message).size(11.0);

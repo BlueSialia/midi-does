@@ -4,7 +4,7 @@ use iced::widget::{column, pick_list, row, text, text_input};
 use iced::{Element, Length};
 
 use crate::app::App;
-use crate::config::{CmpOp, Comparison, Source, SourceBranch, MIN_BLINK_INTERVAL_MS};
+use crate::config::{CmpOp, Comparison, MIN_BLINK_INTERVAL_MS, Source, SourceBranch};
 use crate::pipewire::PwObjectType;
 
 use super::Message;

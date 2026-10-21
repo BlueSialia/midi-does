@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 use std::time::{Duration, Instant};
 
 use iced::Task;
@@ -12,8 +12,8 @@ use crate::config::{
 use crate::pipewire::PwEvent;
 use crate::tray::TrayMessage;
 
-use super::feedback::{apply_feedback_to_handle, FeedbackOutput};
-use super::{next_input_label, next_output_label, take_at, App, AppMessage};
+use super::feedback::{FeedbackOutput, apply_feedback_to_handle};
+use super::{App, AppMessage, next_input_label, next_output_label, take_at};
 
 impl App {
     pub(super) fn mark_dirty(&mut self) {
@@ -119,12 +119,12 @@ impl App {
             .collect();
 
         for name in self.config.device_names().to_vec() {
-            if let Some(device) = self.config.devices.get(&name) {
-                if !available.contains(&device.port_name) {
-                    self.connected_devices.remove(&device.port_name);
-                    if self.output_handles.remove(&name).is_some() {
-                        self.clear_feedback_state(&name);
-                    }
+            if let Some(device) = self.config.devices.get(&name)
+                && !available.contains(&device.port_name)
+            {
+                self.connected_devices.remove(&device.port_name);
+                if self.output_handles.remove(&name).is_some() {
+                    self.clear_feedback_state(&name);
                 }
             }
         }
@@ -143,12 +143,12 @@ impl App {
                 }
                 Err(e) => log::debug!("Hotplug retry failed for {port}: {e}"),
             }
-            if !self.output_handles.contains_key(&name) {
-                if let Ok(h) = self.midi_manager.connect_output(&port) {
-                    self.output_handles.insert(name.clone(), h);
-                    self.clear_feedback_state(&name);
-                    self.send_feedback_for_device(&name);
-                }
+            if !self.output_handles.contains_key(&name)
+                && let Ok(h) = self.midi_manager.connect_output(&port)
+            {
+                self.output_handles.insert(name.clone(), h);
+                self.clear_feedback_state(&name);
+                self.send_feedback_for_device(&name);
             }
         }
     }

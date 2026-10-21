@@ -6,8 +6,8 @@ use crate::actions::{Action, EncoderMode, VolumeMode, VolumeTarget};
 use crate::app::App;
 use crate::pipewire::PwObjectType;
 
-use super::source_picker::pw_obj_picker;
 use super::Message;
+use super::source_picker::pw_obj_picker;
 
 pub(super) fn signal_action_row<'a>(
     icon_idx: usize,

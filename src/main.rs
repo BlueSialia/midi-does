@@ -7,8 +7,11 @@ fn main() -> iced::Result {
     // window or remove it from the taskbar. When XWayland is available
     // (DISPLAY is set), prefer it so closing the window hides it to the tray.
     if std::env::var_os("DISPLAY").is_some() {
-        std::env::remove_var("WAYLAND_DISPLAY");
-        std::env::remove_var("WAYLAND_SOCKET");
+        // This runs before iced creates any worker threads.
+        unsafe {
+            std::env::remove_var("WAYLAND_DISPLAY");
+            std::env::remove_var("WAYLAND_SOCKET");
+        }
     }
 
     env_logger::init();

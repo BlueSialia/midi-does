@@ -1,4 +1,4 @@
-name: Release PR
+name: Release
 
 on:
   push:
@@ -6,66 +6,111 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
-  release-pr:
-    name: Create release PR
-    if: "startsWith(github.event.head_commit.message, 'chore: release') != true"
+  release:
+    name: Build and publish release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Install tools
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config clang libclang-dev libpipewire-0.3-dev libasound2-dev libudev-dev libvulkan-dev libxkbcommon-dev libx11-dev libxcb1-dev libxcursor-dev libxrandr-dev libxi-dev libxext-dev libxinerama-dev libxxf86vm-dev libwayland-dev dpkg-dev liblzma-dev
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - uses: Swatinem/rust-cache@v2
+      - name: Install packaging tools
         uses: taiki-e/install-action@v2
         with:
-          tool: cargo-edit,git-cliff
-
-      - name: Determine version bump
-        id: bump
+          tool: cargo-deb,cargo-generate-rpm
+      - name: Determine release
+        id: metadata
+        env:
+          # Set this to a package name when the workspace has more than one package.
+          PACKAGE: ""
         run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [ -n "$LAST_TAG" ]; then
-            RANGE="${LAST_TAG}..HEAD"
+          set -euo pipefail
+
+          metadata="$(cargo metadata --format-version 1 --no-deps)"
+
+          if [ -n "$PACKAGE" ]; then
+            package="$(jq -c --arg name "$PACKAGE" 'first(.packages[] | select(.name == $name)) // empty' <<<"$metadata")"
           else
-            RANGE="HEAD"
+            package="$(jq -c --arg manifest "$GITHUB_WORKSPACE/Cargo.toml" '
+              if (.packages | length) == 1 then .packages[0]
+              else first(.packages[] | select(.manifest_path == $manifest)) // empty
+              end
+            ' <<<"$metadata")"
           fi
 
-          if git log $RANGE --oneline | grep -qP '^[a-f0-9]+ .+?!:'; then
-            BUMP="major"
-          elif git log $RANGE --oneline | grep -qP '^[a-f0-9]+ feat'; then
-            BUMP="minor"
-          elif git log $RANGE --oneline | grep -qP '^[a-f0-9]+ fix'; then
-            BUMP="patch"
-          else
-            BUMP="patch"
+          if [ -z "$package" ]; then
+            echo "::error::Could not determine the package to release. Set PACKAGE to one of:"
+            jq -r '.packages[].name' <<<"$metadata"
+            exit 1
           fi
 
-          echo "level=$BUMP" >> $GITHUB_OUTPUT
-          echo "Bump level: $BUMP"
+          name="$(jq -r '.name' <<<"$package")"
+          version="$(jq -r '.version' <<<"$package")"
+          tag="v${version}"
 
-      - name: Bump crate version
-        run: cargo set-version --bump ${{ steps.bump.outputs.level }}
+          should_release=false
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "Tag $tag already exists; nothing to publish."
+          elif ! grep -qF "## [$version]" CHANGELOG.md && ! grep -qF "## [v$version]" CHANGELOG.md; then
+            echo "CHANGELOG.md has no entry for $version; nothing to publish."
+          else
+            should_release=true
+          fi
 
-      - name: Update changelog
-        run: |
-          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
-          git cliff --tag "v$VERSION" -o CHANGELOG.md
-
-      - name: Commit and create PR
-        uses: peter-evans/create-pull-request@v8
+          {
+            echo "should_release=$should_release"
+            echo "name=$name"
+            echo "version=$version"
+            echo "tag=$tag"
+            echo "bins<<EOF"
+            jq -r '.targets[] | select(.kind | index("bin")) | "target/release/\(.name)"' <<<"$package"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Test
+        if: steps.metadata.outputs.should_release == 'true'
+        run: cargo test --workspace --locked
+      - name: Build release binary
+        if: steps.metadata.outputs.should_release == 'true'
+        run: cargo build --release --locked -p "${{ steps.metadata.outputs.name }}"
+      - name: Strip release binary
+        if: steps.metadata.outputs.should_release == 'true'
+        run: strip -s target/release/midi-does
+      - name: Build Debian package
+        if: steps.metadata.outputs.should_release == 'true'
+        run: cargo deb --no-build
+      - name: Build RPM package
+        if: steps.metadata.outputs.should_release == 'true'
+        run: cargo generate-rpm
+      - name: Package Nix recipe
+        if: steps.metadata.outputs.should_release == 'true'
+        run: tar -czf "midi-does-${{ steps.metadata.outputs.version }}-nix.tar.gz" flake.nix flake.lock
+      - name: Generate release notes
+        if: steps.metadata.outputs.should_release == 'true'
+        run: awk '/^## \[/{count++} count==1' CHANGELOG.md > release-notes.md
+      - name: Publish release
+        if: steps.metadata.outputs.should_release == 'true'
+        uses: softprops/action-gh-release@v3
         with:
-          commit-message: "chore: release"
-          branch: release/auto
-          title: "chore: release"
-          body: |
-            Automated release PR.
-
-            - Version bumped (${{ steps.bump.outputs.level }})
-            - CHANGELOG.md updated
-          labels: release
-          delete-branch: true
+          tag_name: ${{ steps.metadata.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ steps.metadata.outputs.tag }}
+          body_path: release-notes.md
+          files: |
+            target/release/midi-does
+            target/debian/*.deb
+            target/generate-rpm/*.rpm
+            midi-does-*-nix.tar.gz
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

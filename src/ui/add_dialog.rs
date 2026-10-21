@@ -1,4 +1,4 @@
-use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
+use iced::widget::{Column, button, column, container, row, scrollable, text, text_input};
 use iced::{Element, Length};
 
 use crate::midi::PortInfo;

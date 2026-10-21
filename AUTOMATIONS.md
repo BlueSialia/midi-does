@@ -1,114 +1,130 @@
 # Automations
 
-This document describes all automations in the project, where they live, and what they enforce.
+This document describes the project's automations, where they live, and what they enforce.
 
-## Local automations (git hooks)
+## Local automations (Git hooks)
 
-Git hooks are configured via `core.hooksPath` pointing to `.githooks/`. Run `./setup-hooks.sh` once to enable them.
+Git hooks are configured through `core.hooksPath`, pointing to `.githooks/`. Run `./setup-hooks.sh` once from the repository root to enable them.
 
 | Hook file | Trigger | What it does |
 |---|---|---|
-| `.githooks/commit-msg` | `git commit` | Validates the commit message follows [Conventional Commits](https://www.conventionalcommits.org/). Rejects the commit if the first line doesn't match `type[(scope)][!]: description`. |
+| `.githooks/commit-msg` | `git commit` | Validates that the first line of the commit message follows [Conventional Commits](https://www.conventionalcommits.org/), using the format `type[(scope)][!]: description`. |
 
-## CI (continuous integration)
+The local hook is a convenience for immediate feedback. The CI workflow also checks pull request titles so that the convention is validated for contributions made without the local hooks.
 
-All CI workflows live in `.github/workflows/`.
+## Development environment
 
-The `clippy`, `test`, and `docs` jobs install the native libraries needed to compile the project (PipeWire, ALSA, udev, and `libclang` for `bindgen`) before running.
+The repository includes two complementary ways to obtain the Rust toolchain:
+
+| File | Tool | What it does |
+|---|---|---|
+| `mise.toml` | Mise | Pins the Rust version for local development and CI. |
+| `flake.nix` | Nix | Provides a reproducible development shell with the Rust toolchain and the native PipeWire, ALSA, and GUI libraries; it reads the Rust version from `mise.toml`. |
+| `.envrc` | direnv | Enters the Nix development shell automatically after `direnv allow`. |
+
+The Nix shell prepends the Mise shims to `PATH`, so both tools use the same pinned version when both are installed.
+
+## Continuous integration
+
+All GitHub Actions workflows live in `.github/workflows/`. Rust is pinned to the version declared in `mise.toml`, and the `dtolnay/rust-toolchain` pins in the workflows match it.
 
 ### `ci.yml` — Core CI
 
-**Trigger:** every push and pull request (any branch).
+**Trigger:** every push to `main` and every pull request. New commits to a branch cancel the previous run. The workflow can also be dispatched manually.
 
 | Job | Tool | What it checks |
 |---|---|---|
-| PR title | shell | PR title follows Conventional Commits (PRs only). |
-| Commit message | shell | Last commit message follows Conventional Commits (pushes only). |
-| Format | `cargo fmt --all -- --check` | All code is formatted with rustfmt. |
-| Clippy | `cargo clippy --all-targets --all-features -- -D warnings` | No lint warnings. |
-| Test | `cargo test --all` | All unit and integration tests pass. |
+| PR title | shell | Pull request titles follow Conventional Commits. |
+| Format | `cargo fmt --all -- --check` | Rust code is formatted with rustfmt. |
+| Clippy | `cargo clippy --all-targets --all-features -- -D warnings` | No Clippy warnings are present. |
+| Test | `cargo test --all` | Unit, integration, and documentation tests pass. |
 | Docs | `RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps` | Documentation builds without warnings. |
-| Unused deps | `cargo machete` | No unused dependencies declared in `Cargo.toml`. |
+| Unused dependencies | `cargo machete` | No unused dependencies are declared. |
+
+The Clippy, Test, and Docs jobs install the native libraries required by PipeWire, ALSA, bindgen, Vulkan, X11, and Wayland before running.
 
 ### `security.yml` — Security and license audit
 
-**Trigger:** every push and PR to `main`, plus every Monday at 06:00 UTC.
+**Trigger:** pushes and pull requests to `main`, plus a weekly scheduled run. The workflow can also be dispatched manually.
 
 | Job | Tool | What it checks |
 |---|---|---|
-| cargo-deny | `cargo-deny` | Advisories (RUSTSEC), duplicate crate bans, license compatibility, and source/registry policy. Configured via `deny.toml`. |
+| cargo-deny | `cargo-deny` | Advisories, license compatibility, dependency bans, and registry/source policy. |
 
-`deny.toml` sets `multiple-versions = "warn"` rather than `deny`: `iced` and its GUI dependency tree legitimately ship multiple versions of several crates, so duplicates are reported without failing the build.
-
-### `binary-check.yml` — Binary size and compilation time
-
-**Trigger:** pull requests targeting `main`.
-
-| Job | Tool | What it checks |
-|---|---|---|
-| Size & compile time | `cargo bloat`, `cargo build --release` | Compares binary size and wall-clock compilation time against the baseline from `main`. Fails if size grows >10% or compile time grows >20%; the report is retained in the workflow logs. |
+The policy is configured in `deny.toml`, including the allowed licenses and the clarification for the project's own license. `multiple-versions = "warn"` because Iced and its GUI dependency tree legitimately contain multiple versions of several crates.
 
 ### `binary-baseline.yml` — Baseline recording
 
-**Trigger:** push to `main`.
+**Trigger:** pushes to `main`.
 
-| Job | Tool | What it does |
-|---|---|---|
-| Update baseline | `cargo build --release` | Records binary sizes (per executable) and compilation time into `baseline.json`, then stores it in the GitHub Actions cache for PR comparisons. |
+The workflow builds the release profile, records executable sizes, and stores the result in the GitHub Actions cache. This baseline is made available to `binary-check.yml` for pull requests.
+
+### `binary-check.yml` — Binary size report
+
+**Trigger:** pull requests targeting `main`. It can also be dispatched manually with a `pr-number` input.
+
+The workflow builds the release profile, records executable sizes and a `cargo-bloat` breakdown, compares the sizes with the latest baseline, and posts a report to the pull request. It fails when a matching binary grows by more than 10%. New binaries and missing baselines are reported as warnings rather than failures.
+
+The threshold is configured as `SIZE_THRESHOLD` in the workflow and is currently 10%.
+
+Both workflows operate on the executable targets produced by `cargo build --release`.
 
 ## Releases
 
-Releases are automated end-to-end from Conventional Commits. Two workflows coordinate via the `chore: release` commit message.
+The release workflows use Conventional Commits and a release pull request to separate version changes from publishing.
 
-### `release.yml` — Release orchestration
+### `release-pr.yml` — Release pull request
 
-**Trigger:** push to `main` (unless the commit is a release merge).
+**Trigger:** pushes to `main`.
 
-| Step | Tool | What it does |
-|---|---|---|
-| Determine bump | shell | Analyzes Conventional Commits since the last git tag to determine the next semver bump level (major/minor/patch). |
-| Bump version | `cargo set-version --bump` | Bumps the version in `Cargo.toml`. |
-| Update changelog | `git cliff --tag` | Generates `CHANGELOG.md` from unreleased Conventional Commits. |
-| Create PR | `peter-evans/create-pull-request` | Creates or updates a PR on branch `release/auto` with the version bump and changelog changes. |
+The workflow:
 
-The PR is created with the commit message `chore: release`. Merge it with **squash merge** so the resulting `main` commit message is `chore: release (#N)`; that message triggers the tag workflow.
+1. Resolves the package to release. The `PACKAGE` environment variable selects it explicitly; otherwise the sole workspace package or the workspace root package is used.
+2. Computes the next version with `git cliff --bumped-version`, which follows Conventional Commits and includes `BREAKING CHANGE` footers.
+3. Skips the release when the computed version is not newer than the current version. `chore`, `docs`, `ci`, `test`, `style`, and `build` commits do not trigger a release.
+4. Bumps the package version with `cargo set-version`.
+5. Regenerates `CHANGELOG.md` with `git-cliff` using `cliff.toml`.
+6. Opens or updates a `release/auto` pull request with the commit message `chore: release`.
+7. Dispatches `ci.yml`, `binary-check.yml`, and `security.yml` on the `release/auto` branch so the release pull request receives the same checks as a normal pull request.
 
-### `release-tag.yml` — Git tag, GitHub release, and packages
+The release pull request is created with `GITHUB_TOKEN`, which does not trigger `pull_request` workflows on its own. The dispatch in step 7 therefore runs the checks against the PR's head commit; it requires the `actions: write` permission.
 
-**Trigger:** push to `main` with a commit message starting with `chore: release`.
+### `release.yml` — GitHub release and packages
 
-| Step | Tool | What it does |
-|---|---|---|
-| Build | `cargo build --release` | Builds the `midi-does` binary and strips debug symbols. |
-| DEB package | `cargo deb --no-build` | Builds a `.deb` with the binary, desktop entry, and hicolor icons. |
-| RPM package | `cargo generate-rpm` | Builds a `.rpm` with the binary, desktop entry, and hicolor icons. |
-| Read version | `cargo metadata` | Reads the version from `Cargo.toml`. |
-| Nix recipe | `tar` | Packages `flake.nix` + `flake.lock` as `midi-does-<version>-nix.tar.gz`. |
-| Create tag | `git tag` | Creates an annotated tag (`v{version}`) and pushes it. |
-| Generate notes | `awk` | Extracts the first version section from `CHANGELOG.md`. |
-| Create release | `softprops/action-gh-release` | Creates a GitHub release with the changelog entry as body and attaches the raw binary, `.deb`, `.rpm`, and Nix recipe tarball. |
+**Trigger:** every push to `main`.
 
-### Release artifacts
+The workflow publishes the version currently in `Cargo.toml` when `CHANGELOG.md` contains an entry for it and no `v<version>` tag exists. It is independent of the merge style and idempotent: once the tag exists, later pushes do nothing, and the tag is only created when the release is published.
 
-Each GitHub release contains:
+The workflow:
+
+1. Resolves the package name and version from `cargo metadata`.
+2. Runs the test suite with `cargo test --workspace --locked`.
+3. Builds the selected package's release binary with `cargo build --release --locked`.
+4. Strips the binary and builds the `.deb` and `.rpm` packages.
+5. Packages the Nix recipe (`flake.nix` and `flake.lock`).
+6. Extracts the latest changelog section as release notes.
+7. Creates the GitHub release and attaches the binaries and packages. The release action creates the tag at the pushed commit.
+
+Each release contains:
 
 | Artifact | Purpose |
 |---|---|
-| `midi-does` | Raw `x86_64` Linux binary. |
-| `*.deb` | Debian/Ubuntu package (installs binary, desktop entry, and icons). |
-| `*.rpm` | RPM package for Fedora/openSUSE (same contents as the DEB). |
-| `midi-does-<version>-nix.tar.gz` | The Nix recipe: `flake.nix` + `flake.lock`. |
+| `midi-does` | Raw Linux release binary. |
+| `*.deb` | Debian/Ubuntu package with the binary, desktop entry, and icons. |
+| `*.rpm` | RPM package with the binary, desktop entry, and icons. |
+| `midi-does-<version>-nix.tar.gz` | Nix recipe containing `flake.nix` and `flake.lock`. |
 
-The Nix recipe builds the package from source via `nix build`/`nix run` against the `packages.<system>.default` flake output.
+The Nix recipe builds the package from source via `nix build` or `nix run` against `packages.<system>.default`.
 
 ## Configuration files
 
 | File | Purpose |
 |---|---|
-| `deny.toml` | cargo-deny configuration: allowed licenses, advisory policy, duplicate crate bans, sources. |
-| `cliff.toml` | git-cliff configuration: changelog format, commit parsers, tag pattern. |
-| `.githooks/commit-msg` | Shell script enforcing Conventional Commits locally. |
-| `setup-hooks.sh` | One-time script to enable git hooks via `core.hooksPath`. |
-| `Cargo.toml` `[package.metadata.deb]` | cargo-deb configuration: Debian metadata, dependencies, and assets. |
-| `Cargo.toml` `[package.metadata.generate-rpm]` | cargo-generate-rpm configuration: RPM metadata and assets. |
-| `flake.nix` | Nix package + development shell (used by the release as the Nix recipe). |
+| `deny.toml` | `cargo-deny` advisory, license, dependency, and source policy. |
+| `cliff.toml` | `git-cliff` changelog format, commit groups, bump rules, and tag pattern. |
+| `.githooks/commit-msg` | Local Conventional Commits validation. |
+| `setup-hooks.sh` | Enables the repository's Git hooks. |
+| `Cargo.toml` | Package metadata, Rust dependencies, and packaging configuration. |
+| `Cargo.lock` | Reproducible dependency resolution for the application. |
+| `flake.nix` | Nix package and development shell. |
+| `mise.toml` | Pinned Rust toolchain version. |

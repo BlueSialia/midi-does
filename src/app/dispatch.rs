@@ -9,7 +9,7 @@ use crate::midi::MidiEvent;
 use crate::pipewire::PwCommand;
 
 use super::feedback::{find_pw_object, route_is_active_with_edges};
-use super::{apply_volume, user_shell, App, VolumeParams, VOLUME_FIGHT_WINDOW};
+use super::{App, VOLUME_FIGHT_WINDOW, VolumeParams, apply_volume, user_shell};
 
 impl App {
     fn push_monitor(&mut self, line: String) {
@@ -111,17 +111,16 @@ impl App {
         ch: u8,
         num: u8,
     ) {
-        if let Some(device) = self.config.devices.get_mut(device_name) {
-            if let Some(hw) = device.hardware.iter_mut().find(|h| h.id == hw_id) {
-                if let Some(input) = hw.inputs.get_mut(input_idx) {
-                    input.kind = kind;
-                    input.channel = ch;
-                    input.number = if kind == InputKind::PitchBend { 0 } else { num };
-                    let captured = format!("MIDI Learn: captured {} ch{} #{}", hw.id, ch, num);
-                    self.mark_dirty();
-                    self.status_message = captured;
-                }
-            }
+        if let Some(device) = self.config.devices.get_mut(device_name)
+            && let Some(hw) = device.hardware.iter_mut().find(|h| h.id == hw_id)
+            && let Some(input) = hw.inputs.get_mut(input_idx)
+        {
+            input.kind = kind;
+            input.channel = ch;
+            input.number = if kind == InputKind::PitchBend { 0 } else { num };
+            let captured = format!("MIDI Learn: captured {} ch{} #{}", hw.id, ch, num);
+            self.mark_dirty();
+            self.status_message = captured;
         }
         self.learn_target = None;
     }
@@ -335,10 +334,10 @@ impl App {
         let obj = find_pw_object(self.pw_objects.as_slice(), id)?;
         // During the fight window, use the last-set volume so relative
         // encoder changes have a known starting point.
-        if let Some(last) = self.last_volume_set.get(id) {
-            if last.elapsed() < VOLUME_FIGHT_WINDOW {
-                return self.last_set_volume.get(id).copied();
-            }
+        if let Some(last) = self.last_volume_set.get(id)
+            && last.elapsed() < VOLUME_FIGHT_WINDOW
+        {
+            return self.last_set_volume.get(id).copied();
         }
         obj.volume
     }

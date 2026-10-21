@@ -10,12 +10,12 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use super::objects::{PwCommand, PwEvent, PwObject, PwObjectType};
-use super::spa::{build_props_pod, build_route_pod, parse_props_volume, parse_route, RouteInfo};
+use super::spa::{RouteInfo, build_props_pod, build_route_pod, parse_props_volume, parse_route};
 
 /// How often the current object/edge snapshot is sent to the main thread.
 const PUBLISH_INTERVAL: Duration = Duration::from_millis(50);
@@ -273,10 +273,10 @@ fn app_name(props: Option<&pw::spa::utils::dict::DictRef>) -> Option<String> {
         "node.nick",
         "media.name",
     ] {
-        if let Some(value) = props.get(key) {
-            if !value.is_empty() {
-                return Some(value.to_string());
-            }
+        if let Some(value) = props.get(key)
+            && !value.is_empty()
+        {
+            return Some(value.to_string());
         }
     }
     None
@@ -623,10 +623,10 @@ pub fn spawn(
             let got_objects_watchdog = got_objects.clone();
             let watchdog_weak = mainloop.downgrade();
             let watchdog = mainloop.loop_().add_timer(move |_| {
-                if !got_objects_watchdog.get() {
-                    if let Some(ml) = watchdog_weak.upgrade() {
-                        ml.quit();
-                    }
+                if !got_objects_watchdog.get()
+                    && let Some(ml) = watchdog_weak.upgrade()
+                {
+                    ml.quit();
                 }
             });
             watchdog.update_timer(Some(STARTUP_TIMEOUT), None);
@@ -816,17 +816,15 @@ mod tests {
         while std::time::Instant::now() < deadline {
             if let Ok(PwEvent::ObjectsUpdated { objects, .. }) =
                 rx.recv_timeout(Duration::from_millis(500))
-            {
-                if let Some(o) = objects
+                && let Some(o) = objects
                     .iter()
                     .find(|o| {
                         o.object_type == PwObjectType::Sink && o.name.starts_with("alsa_output")
                     })
                     .and_then(|o| o.volume.map(|v| (o.id, o.name.clone(), v)))
-                {
-                    sink = Some(o);
-                    break;
-                }
+            {
+                sink = Some(o);
+                break;
             }
         }
         let Some((id, name, node_volume)) = sink else {
@@ -848,12 +846,10 @@ mod tests {
         while std::time::Instant::now() < deadline {
             if let Ok(PwEvent::ObjectsUpdated { objects, .. }) =
                 rx.recv_timeout(Duration::from_millis(300))
+                && let Some(o) = objects.iter().find(|o| o.id == id)
+                && o.volume.is_some_and(|v| (v - target).abs() < 0.02)
             {
-                if let Some(o) = objects.iter().find(|o| o.id == id) {
-                    if o.volume.is_some_and(|v| (v - target).abs() < 0.02) {
-                        node_seen = true;
-                    }
-                }
+                node_seen = true;
             }
             if wpctl_volume(id).is_some_and(|v| (v - target).abs() < 0.02) {
                 route_seen = true;
@@ -896,15 +892,13 @@ mod tests {
         while std::time::Instant::now() < deadline {
             if let Ok(PwEvent::ObjectsUpdated { objects, .. }) =
                 rx.recv_timeout(Duration::from_millis(500))
-            {
-                if let Some(v) = objects
+                && let Some(v) = objects
                     .iter()
                     .find(|o| o.id == 44 || o.name.contains("default-sink"))
                     .and_then(|o| o.volume)
-                {
-                    before = Some(v);
-                    break;
-                }
+            {
+                before = Some(v);
+                break;
             }
         }
         let Some(before) = before else {
@@ -924,17 +918,14 @@ mod tests {
         while std::time::Instant::now() < deadline {
             if let Ok(PwEvent::ObjectsUpdated { objects, .. }) =
                 rx.recv_timeout(Duration::from_millis(300))
-            {
-                if let Some(v) = objects
+                && let Some(v) = objects
                     .iter()
                     .find(|o| o.id == 44 || o.name.contains("default-sink"))
                     .and_then(|o| o.volume)
-                {
-                    if (v - target).abs() < 0.02 {
-                        updated = true;
-                        break;
-                    }
-                }
+                && (v - target).abs() < 0.02
+            {
+                updated = true;
+                break;
             }
         }
         let _ = std::process::Command::new("wpctl")

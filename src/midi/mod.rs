@@ -276,11 +276,7 @@ pub(crate) fn stable_port_key(port_name: &str) -> &str {
             && port.bytes().all(|b| b.is_ascii_digit())
     });
 
-    if is_client_port {
-        head
-    } else {
-        port_name
-    }
+    if is_client_port { head } else { port_name }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

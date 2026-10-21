@@ -5,12 +5,12 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use crate::app::user_shell;
-use crate::config::{CmpOp, Comparison, OutputKind, Source, MIN_BLINK_INTERVAL_MS};
+use crate::config::{CmpOp, Comparison, MIN_BLINK_INTERVAL_MS, OutputKind, Source};
 use crate::pipewire::PwObject;
 
 use super::{
-    find_pw_object, route_is_active_with_edges, FeedbackResult, MCU_LED_RING_CMD,
-    MCU_SCRIBBLE_STRIP_CMD, MCU_SYSEX_HEADER, SYSEX_TERMINATOR,
+    FeedbackResult, MCU_LED_RING_CMD, MCU_SCRIBBLE_STRIP_CMD, MCU_SYSEX_HEADER, SYSEX_TERMINATOR,
+    find_pw_object, route_is_active_with_edges,
 };
 
 const VOLUME_EQ_EPSILON: f64 = 0.001;

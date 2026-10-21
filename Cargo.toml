@@ -1,7 +1,7 @@
 [package]
 name = "midi-does"
 version = "0.2.1"
-edition = "2021"
+edition = "2024"
 description = "Map MIDI controllers to PipeWire audio controls and shell commands"
 license-file = "LICENSE.md"
 repository = "https://github.com/BlueSialia/midi-does"

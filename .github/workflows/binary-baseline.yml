@@ -7,29 +7,26 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: binary-baseline
+  cancel-in-progress: true
+
 jobs:
   update:
-    name: Update baseline
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential pkg-config clang libclang-dev libpipewire-0.3-dev libasound2-dev libudev-dev libvulkan-dev libxkbcommon-dev libx11-dev libxcb1-dev libxcursor-dev libxrandr-dev libxi-dev libxext-dev libxinerama-dev libxxf86vm-dev libwayland-dev
-
-      - uses: dtolnay/rust-toolchain@stable
-
+      - uses: dtolnay/rust-toolchain@1.99.1
       - uses: Swatinem/rust-cache@v2
-
-      - name: Build and measure compile time
-        shell: bash
+      - name: Build and measure
         run: |
           set -euo pipefail
 
-          /usr/bin/time -f '%e' -o compile-time.txt cargo build --release
-          echo "Compile time (real seconds): $(cat compile-time.txt)"
+          cargo build --release
 
           find target/release -maxdepth 1 -type f -executable \
             -exec stat --format='%n %s' {} \; \
@@ -37,17 +34,8 @@ jobs:
             | jq -R 'split(" ") | {(.[0] | split("/")[-1]): (.[1] | tonumber)}' \
             | jq -s add > sizes.json
 
-          jq -n \
-            --argjson binaries "$(cat sizes.json)" \
-            --arg time "$(cat compile-time.txt)" \
-            '{ binaries: $binaries, compile_time_real: ($time | tonumber) }' \
-            > baseline.json
-
-          echo "Baseline:"
-          cat baseline.json
-
-      - name: Save baseline to cache
-        uses: actions/cache/save@v5
+          jq -n --argjson binaries "$(cat sizes.json)" '{binaries: $binaries}' > baseline.json
+      - uses: actions/cache/save@v5
         with:
           path: baseline.json
           key: binary-baseline-${{ github.run_id }}
